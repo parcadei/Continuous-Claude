@@ -726,29 +726,6 @@
                 ]
             }
         },
-        "explore": {
-            "type": "exploration",
-            "enforcement": "suggest",
-            "priority": "medium",
-            "description": "General codebase exploration with configurable thoroughness (quick/medium/thorough)",
-            "promptTriggers": {
-                "keywords": [
-                    "explore",
-                    "look around",
-                    "get familiar",
-                    "overview",
-                    "quick look",
-                    "scan",
-                    "browse"
-                ],
-                "intentPatterns": [
-                    "(explore|browse|scan).*?(codebase|project|code)",
-                    "(get|become).*?(familiar|oriented)",
-                    "(quick|general).*?(look|overview|scan)",
-                    "(what|how).*?(codebase|project).*?(look|organized)"
-                ]
-            }
-        },
         "repo-research-analyst": {
             "type": "research",
             "enforcement": "suggest",

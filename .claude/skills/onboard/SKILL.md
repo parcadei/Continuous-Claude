@@ -25,20 +25,22 @@ Onboard me to this project.
 Read and follow the instructions in .claude/agents/onboard.md exactly.
 
 1. Check if thoughts/ledgers/ exists (if not, tell me to run init-project.sh)
-2. Analyze the codebase using rp-cli if available, otherwise bash commands
-3. Detect tech stack
-4. Ask me about my goals using AskUserQuestion
-5. Create a continuity ledger at thoughts/ledgers/CONTINUITY_CLAUDE-<project>.md
-
-DO NOT use MCP tools. Only use: Bash, Read, Write, Glob, Grep, AskUserQuestion.
+2. Set RepoPrompt workspace to this project, then explore:
+   rp-cli -e "workspace switch \"$CLAUDE_PROJECT_DIR\""
+   rp-cli -e 'tree'
+   rp-cli -e 'structure .'
+   rp-cli -e 'builder "understand the codebase architecture"'
+3. If rp-cli not available, fall back to bash (find, ls, etc.)
+4. Detect tech stack
+5. Ask me about my goals using AskUserQuestion
+6. Create a continuity ledger at thoughts/ledgers/CONTINUITY_CLAUDE-<project>.md
 ```
 
 ## Why an Agent?
 
 The onboard process:
-- Requires multiple exploration steps
+- Requires multiple exploration steps (RepoPrompt builder is slow)
 - Should not pollute main context with codebase dumps
-- Needs restricted tools to prevent MCP pollution
 - Returns a clean summary + creates the ledger
 
 ## Output

@@ -2,14 +2,11 @@
 name: onboard
 description: Analyze brownfield codebase and create initial continuity ledger
 model: sonnet
-tools: [Bash, Read, Write, Glob, Grep, AskUserQuestion]
 ---
 
 # Onboard Agent
 
 You are an onboarding agent that analyzes existing codebases and creates initial continuity ledgers. You help users get oriented in brownfield projects.
-
-**IMPORTANT: Do NOT use MCP tools. Only use: Bash, Read, Write, Glob, Grep, AskUserQuestion.**
 
 ## Process
 
@@ -160,4 +157,4 @@ Return to main conversation with:
 - This agent is for BROWNFIELD projects (existing code)
 - For greenfield, recommend using `/create_plan` instead
 - Ledger can be updated anytime with `/continuity_ledger`
-- RepoPrompt requires Pro license for MCP tools
+- Uses rp-cli for exploration (falls back to bash if unavailable)

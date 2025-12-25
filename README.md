@@ -6,6 +6,7 @@ Session continuity, token-efficient MCP execution, and agentic workflows for Cla
 
 ## Table of Contents
 
+- [Architecture Overview](#architecture-overview)
 - [The Problem](#the-problem) / [The Solution](#the-solution)
 - [Quick Start](#quick-start) (project or global install)
 - [How to Talk to Claude](#how-to-talk-to-claude)
@@ -22,6 +23,170 @@ Session continuity, token-efficient MCP execution, and agentic workflows for Cla
 - [Environment Variables](#environment-variables)
 - [Troubleshooting](#troubleshooting)
 - [Acknowledgments](#acknowledgments)
+
+---
+
+## Architecture Overview
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                            CLAUDE CODE SESSION                              │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                             │
+│   ┌─────────────┐    ┌─────────────┐    ┌─────────────┐    ┌────────────┐  │
+│   │ SessionStart│───▶│   Working   │───▶│  PreCompact │───▶│ SessionEnd │  │
+│   └──────┬──────┘    └──────┬──────┘    └──────┬──────┘    └─────┬──────┘  │
+│          │                  │                  │                  │         │
+│          ▼                  ▼                  ▼                  ▼         │
+│   ┌──────────────┐   ┌──────────────┐   ┌──────────────┐   ┌───────────┐   │
+│   │Load Ledger   │   │PostToolUse   │   │Auto-Handoff  │   │Mark       │   │
+│   │Load Handoff  │   │UserPrompt    │   │Block Manual  │   │Outcome    │   │
+│   │Surface       │   │SubagentStop  │   │              │   │Cleanup    │   │
+│   │Learnings     │   │              │   │              │   │Learn      │   │
+│   └──────────────┘   └──────────────┘   └──────────────┘   └───────────┘   │
+│                                                                             │
+└─────────────────────────────────────────────────────────────────────────────┘
+                │                │                │                │
+                ▼                ▼                ▼                ▼
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                              DATA LAYER                                     │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                             │
+│  thoughts/                    .claude/cache/                                │
+│  ├── ledgers/                 ├── artifact-index/                           │
+│  │   └── CONTINUITY_*.md          └── context.db (SQLite+FTS5)             │
+│  └── shared/                  ├── learnings/                                │
+│      ├── handoffs/                └── <date>_<session>.md                   │
+│      │   └── <session>/       └── braintrust_sessions/                      │
+│      │       └── *.md             └── <session>.json                        │
+│      └── plans/                                                             │
+│          └── *.md             .git/claude/                                  │
+│                               └── commits/                                  │
+│                                   └── <hash>/reasoning.md                   │
+│                                                                             │
+└─────────────────────────────────────────────────────────────────────────────┘
+                │                                        │
+                ▼                                        ▼
+┌───────────────────────────────────┐  ┌───────────────────────────────────┐
+│          SKILLS                   │  │           AGENTS                   │
+├───────────────────────────────────┤  ├───────────────────────────────────┤
+│                                   │  │                                   │
+│  ┌──────────────────┐             │  │  ┌──────────────────┐             │
+│  │ continuity_ledger│ Save state  │  │  │ plan-agent       │ Create plan │
+│  ├──────────────────┤             │  │  ├──────────────────┤             │
+│  │ create_handoff   │ End session │  │  │ validate-agent   │ Check tech  │
+│  ├──────────────────┤             │  │  ├──────────────────┤             │
+│  │ resume_handoff   │ Resume work │  │  │ implement_plan   │ Execute     │
+│  ├──────────────────┤             │  │  ├──────────────────┤             │
+│  │ commit           │ Git commit  │  │  │ research-agent   │ Research    │
+│  ├──────────────────┤             │  │  ├──────────────────┤             │
+│  │ tdd-workflow     │ Red/Green   │  │  │ debug-agent      │ Debug       │
+│  ├──────────────────┤             │  │  ├──────────────────┤             │
+│  │ compound-learn   │ Make rules  │  │  │ rp-explorer      │ Codebase    │
+│  └──────────────────┘             │  │  └──────────────────┘             │
+│                                   │  │                                   │
+└───────────────────────────────────┘  └───────────────────────────────────┘
+                │                                        │
+                └────────────────────┬───────────────────┘
+                                     ▼
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                           SCRIPTS (MCP Execution)                           │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                             │
+│  Artifact Index              Braintrust              MCP Tools              │
+│  ┌──────────────────┐        ┌──────────────────┐    ┌──────────────────┐   │
+│  │ artifact_index   │        │ braintrust_       │    │ perplexity_      │   │
+│  │ artifact_query   │        │    analyze        │    │    search        │   │
+│  │ artifact_mark    │        │ (--learn,         │    │ nia_docs         │   │
+│  └──────────────────┘        │  --sessions)      │    │ firecrawl_scrape │   │
+│                              └──────────────────┘    │ github_search    │   │
+│                                                      │ morph_search     │   │
+│                                                      │ ast_grep_find    │   │
+│                                                      │ qlty_check       │   │
+│                                                      └──────────────────┘   │
+│                                                                             │
+│  Executed via: uv run python -m runtime.harness scripts/<script>.py        │
+│                                                                             │
+└─────────────────────────────────────────────────────────────────────────────┘
+                                     │
+                                     ▼
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                        EXTERNAL SERVICES (Optional)                         │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                             │
+│  ┌──────────┐  ┌──────────┐  ┌──────────┐  ┌──────────┐  ┌──────────┐      │
+│  │Braintrust│  │Perplexity│  │ Firecrawl│  │   Morph  │  │   Nia    │      │
+│  │ Tracing  │  │  Search  │  │  Scrape  │  │ WarpGrep │  │   Docs   │      │
+│  └──────────┘  └──────────┘  └──────────┘  └──────────┘  └──────────┘      │
+│                                                                             │
+│  Local-only: git, ast-grep, qlty                                           │
+│  License required: repoprompt (Pro for MCP tools)                          │
+│                                                                             │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+### Data Flow: Session Lifecycle
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                         THE CONTINUITY LOOP                                 │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+  1. SESSION START                     2. WORKING
+  ┌────────────────────┐               ┌────────────────────┐
+  │                    │               │                    │
+  │  Ledger loaded ────┼──▶ Context    │  PostToolUse ──────┼──▶ Index handoffs
+  │  Handoff loaded    │               │  UserPrompt ───────┼──▶ Skill hints
+  │  Learnings shown   │               │  SubagentStop ─────┼──▶ Agent reports
+  │                    │               │                    │
+  └────────────────────┘               └────────────────────┘
+           │                                    │
+           │                                    ▼
+           │                           ┌────────────────────┐
+           │                           │ 3. PRE-COMPACT     │
+           │                           │                    │
+           │                           │  Auto-handoff ─────┼──▶ thoughts/
+           │                           │  Block manual      │
+           │                           │                    │
+           │                           └────────────────────┘
+           │                                    │
+           │                                    ▼
+           │                           ┌────────────────────┐
+           │                           │ 4. SESSION END     │
+           │                           │                    │
+           │                           │  Mark outcome ─────┼──▶ artifact.db
+           │                           │  Extract learnings ┼──▶ cache/
+           │                           │  Cleanup           │
+           │                           │                    │
+           │                           └────────────────────┘
+           │                                    │
+           │                                    │
+           └──────────────◀────── /clear ◀──────┘
+                          Fresh context + state preserved
+```
+
+### The 3-Step Agent Flow
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                    PLAN → VALIDATE → IMPLEMENT                              │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+  "Design a feature"          "Ready to implement"        "Execute the plan"
+         │                           │                           │
+         ▼                           ▼                           ▼
+  ┌──────────────┐           ┌──────────────┐           ┌──────────────┐
+  │ plan-agent   │──────────▶│validate-agent│──────────▶│implement_plan│
+  │              │           │              │           │              │
+  │ Research     │           │ Check tech   │           │ Orchestrate  │
+  │ Design       │           │ Best practs  │           │ Task agents  │
+  │ Write plan   │           │ Flag issues  │           │ TDD workflow │
+  └──────────────┘           └──────────────┘           └──────────────┘
+         │                           │                           │
+         ▼                           ▼                           ▼
+  thoughts/shared/           Validation report         thoughts/shared/
+  plans/*.md                 (in context)              handoffs/session/*.md
+```
 
 ---
 
@@ -150,12 +315,14 @@ This kit responds to natural language triggers. Say certain phrases and Claude a
 | "find examples", "similar pattern", "how do we do X" | Spawns **codebase-pattern-finder** |
 | "explore", "get familiar", "overview" | Spawns **explore** agent with configurable depth |
 
-**rp-explorer uses RepoPrompt tools:**
+**rp-explorer uses RepoPrompt tools** (requires Pro license - $14.99/mo or $349 lifetime):
 - **Context Builder** - Deep AI-powered exploration (async, 30s-5min)
 - **Codemaps** - Function/class signatures without full file content (10x fewer tokens)
 - **Slices** - Read specific line ranges, not whole files
 - **Search** - Pattern matching with context lines
 - **Workspaces** - Switch between projects
+
+*Free tier available with basic features (32k token limit, no MCP server)*
 
 ### Research
 
@@ -496,13 +663,145 @@ Track every session with Braintrust for learning from past work.
 2. **Automatic learnings** - At session end, extracts "What Worked/Failed/Patterns"
 3. **Artifact Index integration** - Handoffs linked to trace IDs for correlation
 
+### Architecture
+
 ```
-Session runs → Braintrust logs everything
-    ↓
-SessionEnd → extracts learnings → .claude/cache/learnings/
-    ↓
-Next SessionStart → surfaces relevant learnings
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                        BRAINTRUST TRACING ARCHITECTURE                      │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+                             ┌─────────────────┐
+                             │   Braintrust    │
+                             │     Cloud       │
+                             │  (braintrust.   │
+                             │      dev)       │
+                             └────────┬────────┘
+                                      │
+              ┌───────────────────────┼───────────────────────┐
+              │                       │                       │
+              ▼                       ▼                       ▼
+      ┌──────────────┐       ┌──────────────┐       ┌──────────────┐
+      │   Project A  │       │   Project B  │       │   Project C  │
+      │   (traces)   │       │   (traces)   │       │   (traces)   │
+      └──────────────┘       └──────────────┘       └──────────────┘
+
+
+                    WITHIN A PROJECT: Session Trace Structure
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                                                                             │
+│   SESSION (root span) ─── created by SessionStart hook                      │
+│   │                                                                         │
+│   ├── TURN 1 (task span) ─── created by UserPromptSubmit hook              │
+│   │   │                                                                     │
+│   │   ├── LLM Call (llm span) ─── created by Stop hook                     │
+│   │   │   └── input: [user message], output: [assistant + tool_use]        │
+│   │   │                                                                     │
+│   │   ├── Tool: Read file.ts (tool span) ─── PostToolUse hook              │
+│   │   ├── Tool: Edit file.ts (tool span) ─── PostToolUse hook              │
+│   │   │                                                                     │
+│   │   └── LLM Call (llm span) ─── created by Stop hook                     │
+│   │       └── input: [tool results], output: [assistant response]          │
+│   │                                                                         │
+│   ├── TURN 2 (task span)                                                   │
+│   │   └── ... (same structure)                                             │
+│   │                                                                         │
+│   └── TURN N (task span)                                                   │
+│                                                                             │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+
+                    CROSS-SESSION: The Learning Loop
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                                                                             │
+│   SESSION 1                SESSION 2                SESSION 3               │
+│   ┌─────────┐              ┌─────────┐              ┌─────────┐             │
+│   │  Work   │              │  Work   │              │  Work   │             │
+│   │   +     │              │   +     │              │   +     │             │
+│   │ Traces  │              │ Traces  │              │ Traces  │             │
+│   └────┬────┘              └────┬────┘              └────┬────┘             │
+│        │                        │                        │                  │
+│        ▼                        ▼                        ▼                  │
+│   ┌─────────┐              ┌─────────┐              ┌─────────┐             │
+│   │SessionEnd              │SessionEnd              │SessionEnd             │
+│   │--learn  │              │--learn  │              │--learn  │             │
+│   └────┬────┘              └────┬────┘              └────┬────┘             │
+│        │                        │                        │                  │
+│        ▼                        ▼                        ▼                  │
+│   ┌─────────────────────────────────────────────────────────────┐           │
+│   │                .claude/cache/learnings/                      │           │
+│   │  ├── 2025-12-24_session-1.md  (What Worked, What Failed)    │           │
+│   │  ├── 2025-12-24_session-2.md  (Key Decisions, Patterns)     │           │
+│   │  └── 2025-12-25_session-3.md                                │           │
+│   └──────────────────────────┬──────────────────────────────────┘           │
+│                              │                                              │
+│                              ▼                                              │
+│                     ┌─────────────────┐                                     │
+│                     │  SessionStart   │                                     │
+│                     │  (next session) │                                     │
+│                     │                 │                                     │
+│                     │ Surfaces recent │                                     │
+│                     │ learnings (48h) │                                     │
+│                     └─────────────────┘                                     │
+│                                                                             │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+
+                    HANDOFF ↔ TRACE CORRELATION
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                                                                             │
+│   Handoff File (thoughts/shared/handoffs/session/task-01.md)               │
+│   ┌─────────────────────────────────────────────────────────────┐           │
+│   │ ---                                                         │           │
+│   │ root_span_id: abc-123-main  ◄──── Links to Braintrust trace│           │
+│   │ turn_span_id: def-456-turn  ◄──── Span that created it     │           │
+│   │ session_id: abc-123-main                                    │           │
+│   │ ---                                                         │           │
+│   │ # Task: Implement feature X                                 │           │
+│   │ ...                                                         │           │
+│   └─────────────────────────────────────────────────────────────┘           │
+│                              │                                              │
+│                              │ Query by span_id                             │
+│                              ▼                                              │
+│   ┌─────────────────────────────────────────────────────────────┐           │
+│   │                    Braintrust Trace                         │           │
+│   │  - See exact tool calls that produced the handoff           │           │
+│   │  - Review token usage and timing                            │           │
+│   │  - Debug what went wrong in failed sessions                 │           │
+│   └─────────────────────────────────────────────────────────────┘           │
+│                                                                             │
+└─────────────────────────────────────────────────────────────────────────────┘
 ```
+
+### Built on braintrust-claude-plugin
+
+This kit extends the [official Braintrust Claude plugin](https://github.com/braintrustdata/braintrust-claude-plugin), which provides a single `stop_hook.sh` for basic session tracing. We've enhanced it with:
+
+| Original Plugin | Our Enhancements |
+|-----------------|------------------|
+| `stop_hook.sh` only | Full hook suite (6 hooks) |
+| Basic session logging | Hierarchical span structure |
+| No learning extraction | Auto-extracts learnings at session end |
+| No cross-session memory | Surfaces learnings at session start |
+| No handoff correlation | Links handoffs to trace IDs |
+
+**Our additions:**
+
+| Hook | Purpose |
+|------|---------|
+| `common.sh` | Shared utilities (UUID, timestamps, state management) |
+| `session_start.sh` | Creates root span for the session |
+| `user_prompt_submit.sh` | Creates turn spans, reconciles interrupted sessions |
+| `post_tool_use.sh` | Logs tool spans with input/output |
+| `stop_hook.sh` | Enhanced - creates LLM spans with full conversation context |
+| `session_end.sh` | Triggers `braintrust_analyze.py --learn` for auto-learning |
+
+**Key improvements:**
+
+1. **Hierarchical tracing** - Session → Turn → Tool/LLM spans (not flat logs)
+2. **Cross-session learning** - Extracts patterns from past sessions
+3. **Artifact correlation** - Handoffs linked to traces via `root_span_id`
+4. **Multi-project support** - Each project gets its own trace namespace
+5. **Fix for large content** - Uses temp files to avoid shell argument limits
 
 ### Enabling Braintrust
 
@@ -615,10 +914,10 @@ After completing work, mark the outcome:
 
 ```bash
 # List unmarked handoffs
-uv run python scripts/context_graph_query.py --unmarked
+uv run python scripts/artifact_query.py --unmarked
 
 # Mark an outcome
-uv run python scripts/context_graph_mark.py \
+uv run python scripts/artifact_mark.py \
   --handoff abc123 \
   --outcome SUCCEEDED
 ```
@@ -629,10 +928,10 @@ uv run python scripts/context_graph_mark.py \
 
 ```bash
 # Search handoffs by content
-uv run python scripts/context_graph_query.py --search "authentication bug"
+uv run python scripts/artifact_query.py --search "authentication bug"
 
 # Get session history
-uv run python scripts/context_graph_query.py --session open-source-release
+uv run python scripts/artifact_query.py --session open-source-release
 ```
 
 ---
@@ -711,8 +1010,10 @@ NIA_API_KEY="nk_..."
 Services without API keys still work:
 - `git` - local git operations
 - `ast-grep` - structural code search
-- `repoprompt` - codebase maps
 - `qlty` - code quality (after install)
+
+License-based (no API key, requires purchase):
+- `repoprompt` - codebase maps (Free tier: basic features; Pro: MCP tools, CodeMaps)
 
 ---
 
@@ -751,7 +1052,7 @@ Services without API keys still work:
 - **[Nia](https://trynia.ai)** - Library documentation search
 - **[Morph](https://www.morphllm.com)** - WarpGrep fast code search
 - **[Firecrawl](https://www.firecrawl.dev)** - Web scraping API
-- **[RepoPrompt](https://repoprompt.com)** - Token-efficient codebase maps
+- **[RepoPrompt](https://repoprompt.com)** - Token-efficient codebase maps (Pro license for MCP tools)
 
 ---
 

@@ -132,6 +132,55 @@ mkdir -p "$GLOBAL_DIR/state/braintrust_sessions"
 echo ""
 echo "Installation complete!"
 echo ""
+
+# Check for global MCP servers that could pollute projects
+CLAUDE_JSON="$HOME/.claude.json"
+if [ -f "$CLAUDE_JSON" ] && command -v jq &> /dev/null; then
+    GLOBAL_MCP_COUNT=$(jq -r '.mcpServers // {} | keys | length' "$CLAUDE_JSON" 2>/dev/null || echo "0")
+    if [ "$GLOBAL_MCP_COUNT" -gt 0 ]; then
+        echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+        echo "⚠️  GLOBAL MCP SERVERS DETECTED"
+        echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+        echo ""
+        echo "Found $GLOBAL_MCP_COUNT global MCP servers in ~/.claude.json:"
+        jq -r '.mcpServers // {} | keys[]' "$CLAUDE_JSON" 2>/dev/null | sed 's/^/  • /'
+        echo ""
+        echo "These servers are inherited by ALL projects and can cause"
+        echo "skills to use unexpected tools (e.g., /onboard using 'beads')."
+        echo ""
+        echo "Recommended: Remove global MCP servers and configure them"
+        echo "per-project in each project's .mcp.json instead."
+        echo ""
+        read -p "Remove global MCP servers from ~/.claude.json? [y/N] " -n 1 -r
+        echo ""
+        if [[ $REPLY =~ ^[Yy]$ ]]; then
+            # Backup first
+            cp "$CLAUDE_JSON" "$CLAUDE_JSON.backup.$TIMESTAMP"
+            echo "Backup created: $CLAUDE_JSON.backup.$TIMESTAMP"
+
+            # Remove only the mcpServers key, preserve everything else
+            jq 'del(.mcpServers)' "$CLAUDE_JSON" > "$CLAUDE_JSON.tmp"
+            mv "$CLAUDE_JSON.tmp" "$CLAUDE_JSON"
+            echo "✓ Removed global MCP servers"
+            echo ""
+            echo "To restore: cp $CLAUDE_JSON.backup.$TIMESTAMP $CLAUDE_JSON"
+        else
+            echo "Skipped. You can disable specific servers later with: /mcp disable <server>"
+        fi
+        echo ""
+    fi
+elif [ -f "$CLAUDE_JSON" ] && ! command -v jq &> /dev/null; then
+    # Check if file likely has mcpServers without jq
+    if grep -q '"mcpServers"' "$CLAUDE_JSON" 2>/dev/null; then
+        echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+        echo "⚠️  NOTE: Global MCP servers may exist in ~/.claude.json"
+        echo "   Install 'jq' to auto-remove them, or disable manually:"
+        echo "   /mcp disable <server-name>"
+        echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+        echo ""
+    fi
+fi
+
 echo "Features now available in any project:"
 echo "  - Continuity ledger (/continuity_ledger)"
 echo "  - Handoffs (/create_handoff, /resume_handoff)"

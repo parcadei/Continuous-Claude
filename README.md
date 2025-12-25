@@ -258,7 +258,79 @@ claude
 ./install-global.sh
 ```
 
-This installs skills, agents, rules, and hooks to `~/.claude/`. Now you can use continuity, handoffs, and all other features from any project.
+**What it does:**
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│  Continuous Claude - Global Installation                    │
+└─────────────────────────────────────────────────────────────┘
+
+This will install to: ~/.claude
+
+⚠️  WARNING: The following will be REPLACED:
+   • ~/.claude/skills/     (all skills)
+   • ~/.claude/agents/     (all agents)
+   • ~/.claude/rules/      (all rules)
+   • ~/.claude/hooks/      (all hooks)
+   • ~/.claude/settings.json (backup created)
+
+✓ PRESERVED (not touched):
+   • ~/.claude/.env
+   • ~/.claude/cache/
+   • ~/.claude/state/
+
+📦 A full backup will be created at ~/.claude-backup-<timestamp>
+
+Continue with installation? [y/N] y
+
+Installing Continuous Claude to ~/.claude...
+
+Creating full backup at ~/.claude-backup-20251225_043445...
+Backup complete. To restore: rm -rf ~/.claude && mv ~/.claude-backup-<timestamp> ~/.claude
+
+Copying skills...
+Copying agents...
+Copying rules...
+Copying hooks...
+Copying scripts...
+Copying plugins...
+Installing settings.json...
+Creating .env template...
+
+Installation complete!
+```
+
+**Global MCP cleanup (optional):**
+
+If you have MCP servers defined globally in `~/.claude.json`, the script detects them:
+
+```
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+⚠️  GLOBAL MCP SERVERS DETECTED
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Found 9 global MCP servers in ~/.claude.json:
+  • agi-memory
+  • ast-grep
+  • beads
+  • firecrawl
+  • github
+  ...
+
+These servers are inherited by ALL projects and can cause
+skills to use unexpected tools (e.g., /onboard using 'beads').
+
+Recommended: Remove global MCP servers and configure them
+per-project in each project's .mcp.json instead.
+
+Remove global MCP servers from ~/.claude.json? [y/N] y
+Backup created: ~/.claude.json.backup.<timestamp>
+✓ Removed global MCP servers
+
+To restore: cp ~/.claude.json.backup.<timestamp> ~/.claude.json
+```
+
+**Why remove global MCP?** Global MCP servers are inherited by ALL projects. This can cause unexpected behavior where skills use random tools instead of following their instructions. Best practice: configure MCP servers per-project in `.mcp.json`.
 
 ### Option 3: Initialize a New Project
 
@@ -267,14 +339,48 @@ After global install, set up any project for full continuity support:
 ```bash
 cd your-project
 ~/.claude/scripts/init-project.sh
-# Or if you cloned this repo:
-./init-project.sh
+```
+
+**What it does:**
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│  Continuous Claude - Project Initialization                 │
+└─────────────────────────────────────────────────────────────┘
+
+This will create:
+  • thoughts/ledgers/     - Continuity ledgers
+  • thoughts/shared/      - Plans and handoffs
+  • .claude/cache/        - Artifact Index database
+
+Project: /path/to/your-project
+
+Continue? [y/N] y
+
+Creating directories...
+✓ thoughts/ledgers/
+✓ thoughts/shared/handoffs/
+✓ thoughts/shared/plans/
+✓ .claude/cache/artifact-index/
+
+Initializing Artifact Index database...
+✓ Created context.db with FTS5 schema
+
+Adding to .gitignore...
+✓ Added .claude/cache/ to .gitignore
+
+Project initialized! You can now:
+  • Use /continuity_ledger to save session state
+  • Use /create_handoff to create session handoffs
+  • Use /onboard to analyze the codebase
 ```
 
 This creates:
 - `thoughts/` - Plans, handoffs, ledgers (gitignored)
-- `.claude/cache/artifact-index/` - Local search database
+- `.claude/cache/artifact-index/` - Local search database (SQLite + FTS5)
 - Adds `.claude/cache/` to `.gitignore`
+
+**For brownfield projects**, run `/onboard` after initialization to analyze the codebase and create an initial ledger.
 
 ### What's Optional?
 
@@ -300,6 +406,34 @@ This kit responds to natural language triggers. Say certain phrases and Claude a
 | "save state", "update ledger", "before clear" | Updates continuity ledger, preserves state for `/clear` |
 | "done for today", "wrap up", "create handoff" | Creates detailed handoff doc for next session |
 | "resume work", "continue from handoff", "pick up where" | Loads handoff, analyzes context, continues |
+
+### Onboarding (New Projects)
+
+| Say This | What Happens |
+|----------|--------------|
+| "onboard", "get familiar", "analyze this project" | Runs **/onboard** skill - analyzes codebase, creates initial ledger |
+| "explore codebase", "understand the code", "what does this do" | Spawns **rp-explorer** for token-efficient exploration |
+
+**The `/onboard` skill** is designed for brownfield projects (existing codebases). It:
+
+1. **Checks prerequisites** - Verifies `thoughts/` structure exists (run `init-project.sh` first)
+2. **Analyzes codebase** - Uses RepoPrompt if available, falls back to bash commands:
+   - `rp-cli -e 'tree'` - Directory structure
+   - `rp-cli -e 'builder "understand the codebase"'` - AI-powered file selection
+   - `rp-cli -e 'structure .'` - Code signatures (token-efficient)
+3. **Detects tech stack** - Language, framework, database, testing, CI/CD
+4. **Asks your goal** - Feature work, bug fixes, refactoring, or learning
+5. **Creates continuity ledger** - At `thoughts/ledgers/CONTINUITY_CLAUDE-<project>.md`
+
+**Example workflow:**
+```bash
+# 1. Initialize project structure
+~/.claude/scripts/init-project.sh
+
+# 2. Start Claude and onboard
+claude
+> /onboard
+```
 
 ### Planning & Implementation
 

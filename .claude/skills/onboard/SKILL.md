@@ -1,3 +1,8 @@
+---
+name: onboard
+description: Analyze brownfield codebase and create initial continuity ledger
+---
+
 # Onboard - Project Discovery & Ledger Creation
 
 Analyze a brownfield codebase and create an initial continuity ledger.
@@ -8,149 +13,33 @@ Analyze a brownfield codebase and create an initial continuity ledger.
 - User says "onboard", "analyze this project", "get familiar with codebase"
 - After running `init-project.sh` in a new project
 
-## Process
+## How to Use
 
-### Step 1: Check Prerequisites
+**Spawn the onboard agent:**
 
-```bash
-# Verify thoughts/ structure exists
-ls thoughts/ledgers/ 2>/dev/null || echo "Run init-project.sh first"
-```
-
-### Step 2: Codebase Analysis
-
-**If RepoPrompt available (preferred):**
-
-```bash
-# 1. Get directory tree
-rp-cli -e 'tree'
-
-# 2. AI-powered context builder - auto-selects relevant files
-rp-cli -e 'builder "understand the codebase architecture"'
-# Or with shorthand:
-rp-cli --builder "understand the codebase architecture"
-
-# 3. Get code structure (signatures only, token-efficient)
-rp-cli -e 'structure .'
-
-# 4. Search for key patterns
-rp-cli -e 'search "TODO" --max-results 10'
-rp-cli -e 'search "FIXME" --max-results 10'
-rp-cli -e 'search "main\|entry\|app" --max-results 10'
-
-# 5. Export full context
-rp-cli -e 'context --all > /tmp/codebase-context.md'
-```
-
-**RepoPrompt CLI Reference:**
-
-| Command | Purpose |
-|---------|---------|
-| `tree` | Directory structure (`--folders` for dirs only) |
-| `structure <path>` | Code signatures, token-efficient |
-| `builder "<task>"` | AI-powered file selection |
-| `search "pattern"` | Search (`--context-lines`, `--extensions`) |
-| `read <file>` | Read file (`--start-line`, `--limit` for slices) |
-| `select set <paths>` | Set file selection for context |
-| `context` | Export context (`--all` for everything) |
-
-**Workflow shorthand:**
-```bash
-rp-cli --workspace MyProject --select-set src/ --export-context ~/out.md
-```
-
-**Fallback (no RepoPrompt):**
-
-```bash
-# Project structure
-find . -maxdepth 3 -type f \( -name "*.md" -o -name "package.json" -o -name "pyproject.toml" -o -name "Cargo.toml" -o -name "go.mod" \) 2>/dev/null | head -20
-
-# Key directories
-ls -la src/ app/ lib/ packages/ 2>/dev/null | head -30
-
-# README content
-head -100 README.md 2>/dev/null
-
-# Search for entry points
-grep -r "main\|entry" --include="*.json" . 2>/dev/null | head -10
-```
-
-### Step 3: Detect Tech Stack
-
-Look for and summarize:
-- **Language**: package.json (JS/TS), pyproject.toml (Python), Cargo.toml (Rust), go.mod (Go)
-- **Framework**: Next.js, Django, Rails, FastAPI, etc.
-- **Database**: prisma/, migrations/, .env references
-- **Testing**: jest.config, pytest.ini, test directories
-- **CI/CD**: .github/workflows/, .gitlab-ci.yml
-- **Build**: webpack, vite, esbuild, turbo
-
-### Step 4: Ask User for Goal
-
-Use AskUserQuestion tool:
+Use the Task tool with `subagent_type: "general-purpose"` and this prompt:
 
 ```
-Question: "What's your primary goal working on this project?"
-Options:
-- "Add new feature"
-- "Fix bugs / maintenance"
-- "Refactor / improve architecture"
-- "Learn / understand codebase"
+Onboard me to this project.
+
+Read and follow the instructions in .claude/agents/onboard.md exactly.
+
+1. Check if thoughts/ledgers/ exists (if not, tell me to run init-project.sh)
+2. Analyze the codebase using rp-cli if available, otherwise bash commands
+3. Detect tech stack
+4. Ask me about my goals using AskUserQuestion
+5. Create a continuity ledger at thoughts/ledgers/CONTINUITY_CLAUDE-<project>.md
+
+DO NOT use MCP tools. Only use: Bash, Read, Write, Glob, Grep, AskUserQuestion.
 ```
 
-Then ask:
-```
-Question: "Any specific constraints or patterns I should follow?"
-Options:
-- "Follow existing patterns"
-- "Check CONTRIBUTING.md"
-- "Ask me as we go"
-```
+## Why an Agent?
 
-### Step 5: Generate Continuity Ledger
-
-Create ledger at: `thoughts/ledgers/CONTINUITY_CLAUDE-<project-name>.md`
-
-Template:
-```markdown
-# Session: <project-name>
-Updated: <timestamp>
-
-## Goal
-<User's stated goal from Step 4>
-
-## Constraints
-- Tech Stack: <detected>
-- Framework: <detected>
-- Build: <detected build command>
-- Test: <detected test command>
-- Patterns: <from CONTRIBUTING.md or user input>
-
-## Key Decisions
-(None yet - will be populated as decisions are made)
-
-## State
-- Now: [→] Initial exploration
-- Next: <based on goal>
-
-## Working Set
-- Key files: <detected entry points>
-- Test command: <detected, e.g., npm test, pytest>
-- Build command: <detected, e.g., npm run build>
-- Dev command: <detected, e.g., npm run dev>
-
-## Open Questions
-- UNCONFIRMED: <any uncertainties from analysis>
-
-## Codebase Summary
-<Brief summary from rp-cli builder or manual exploration>
-```
-
-### Step 6: Confirm with User
-
-Show the generated ledger and ask:
-- "Does this look accurate?"
-- "Anything to add or correct?"
+The onboard process:
+- Requires multiple exploration steps
+- Should not pollute main context with codebase dumps
+- Needs restricted tools to prevent MCP pollution
+- Returns a clean summary + creates the ledger
 
 ## Output
 
@@ -164,4 +53,3 @@ Show the generated ledger and ask:
 - For greenfield, use `/create_plan` instead
 - Ledger can be updated anytime with `/continuity_ledger`
 - RepoPrompt requires the app running with MCP Server enabled
-- Use `rp-cli -d <cmd>` for detailed help on any command

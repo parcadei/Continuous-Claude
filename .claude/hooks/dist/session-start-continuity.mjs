@@ -66,6 +66,10 @@ async function main() {
   const projectDir = process.env.CLAUDE_PROJECT_DIR || process.cwd();
   const sessionType = input.source || input.type;
   const ledgerDir = path.join(projectDir, "thoughts", "ledgers");
+  if (!fs.existsSync(ledgerDir)) {
+    console.log(JSON.stringify({ result: "continue" }));
+    return;
+  }
   const ledgerFiles = fs.readdirSync(ledgerDir).filter((f) => f.startsWith("CONTINUITY_CLAUDE-") && f.endsWith(".md")).sort((a, b) => {
     const statA = fs.statSync(path.join(ledgerDir, a));
     const statB = fs.statSync(path.join(ledgerDir, b));

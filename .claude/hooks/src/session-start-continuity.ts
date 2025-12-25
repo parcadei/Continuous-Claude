@@ -126,6 +126,11 @@ async function main() {
 
   // Find existing ledgers, sorted by modification time
   const ledgerDir = path.join(projectDir, 'thoughts', 'ledgers');
+  if (!fs.existsSync(ledgerDir)) {
+    // No thoughts/ledgers directory - exit silently (normal for new projects)
+    console.log(JSON.stringify({ result: 'continue' }));
+    return;
+  }
   const ledgerFiles = fs.readdirSync(ledgerDir)
     .filter(f => f.startsWith('CONTINUITY_CLAUDE-') && f.endsWith('.md'))
     .sort((a, b) => {

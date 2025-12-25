@@ -42,9 +42,21 @@ async function main() {
         const data: HookInput = JSON.parse(input);
         const prompt = data.prompt.toLowerCase();
 
-        // Load skill rules
-        const projectDir = process.env.CLAUDE_PROJECT_DIR || '$HOME/project';
-        const rulesPath = join(projectDir, '.claude', 'skills', 'skill-rules.json');
+        // Load skill rules (try project first, then global)
+        const projectDir = process.env.CLAUDE_PROJECT_DIR || process.cwd();
+        const homeDir = process.env.HOME || '';
+        const projectRulesPath = join(projectDir, '.claude', 'skills', 'skill-rules.json');
+        const globalRulesPath = join(homeDir, '.claude', 'skills', 'skill-rules.json');
+
+        let rulesPath = '';
+        if (existsSync(projectRulesPath)) {
+            rulesPath = projectRulesPath;
+        } else if (existsSync(globalRulesPath)) {
+            rulesPath = globalRulesPath;
+        } else {
+            // No rules file found, exit silently
+            process.exit(0);
+        }
         const rules: SkillRules = JSON.parse(readFileSync(rulesPath, 'utf-8'));
 
         const matchedSkills: MatchedSkill[] = [];

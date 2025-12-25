@@ -51,6 +51,47 @@
                 ]
             }
         },
+        "hook-developer": {
+            "type": "domain",
+            "enforcement": "suggest",
+            "priority": "high",
+            "description": "Complete Claude Code hooks reference - input/output schemas, registration, testing",
+            "promptTriggers": {
+                "keywords": [
+                    "create hook",
+                    "write hook",
+                    "new hook",
+                    "hook input",
+                    "hook output",
+                    "hook schema",
+                    "PreToolUse",
+                    "PostToolUse",
+                    "SessionStart",
+                    "SessionEnd",
+                    "UserPromptSubmit",
+                    "PermissionRequest",
+                    "Stop hook",
+                    "SubagentStop",
+                    "PreCompact",
+                    "Notification hook",
+                    "hook reference",
+                    "hook documentation",
+                    "hook format",
+                    "settings.json hooks",
+                    "register hook",
+                    "hook matcher"
+                ],
+                "intentPatterns": [
+                    "(create|write|build|make|develop).*?hook",
+                    "hook.*(input|output|schema|format|reference)",
+                    "(how|what).*(hook|PreToolUse|PostToolUse|SessionStart)",
+                    "(register|add).*hook.*(settings|config)",
+                    "(PreToolUse|PostToolUse|SessionStart|SessionEnd|UserPromptSubmit).*(input|output|schema)",
+                    "hook.*(block|allow|deny|continue)",
+                    "(what|which).*fields.*hook"
+                ]
+            }
+        },
                 "implement_plan": {
             "type": "domain",
             "enforcement": "suggest",

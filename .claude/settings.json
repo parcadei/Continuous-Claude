@@ -49,6 +49,16 @@
     ],
     "PostToolUse": [
       {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "$HOME/.claude/hooks/typescript-preflight.sh",
+            "timeout": 40
+          }
+        ]
+      },
+      {
         "matcher": "Write",
         "hooks": [
           {

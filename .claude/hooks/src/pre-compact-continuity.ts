@@ -10,8 +10,8 @@ interface PreCompactInput {
 }
 
 interface HookOutput {
-  result: 'continue' | 'block';
-  message?: string;
+  continue?: boolean;
+  systemMessage?: string;
 }
 
 async function main() {
@@ -26,8 +26,8 @@ async function main() {
   if (ledgerFiles.length === 0) {
     // No ledger - just remind to create one
     const output: HookOutput = {
-      result: 'continue',
-      message: '[PreCompact] No ledger found. Create one? /continuity_ledger'
+      continue: true,
+      systemMessage: '[PreCompact] No ledger found. Create one? /continuity_ledger'
     };
     console.log(JSON.stringify(output));
     return;
@@ -80,15 +80,15 @@ async function main() {
       : `[PreCompact:auto] Session summary auto-appended to ${mostRecent}`;
 
     const output: HookOutput = {
-      result: 'continue',
-      message
+      continue: true,
+      systemMessage: message
     };
     console.log(JSON.stringify(output));
   } else {
-    // Manual compact: Block and prompt for full update
+    // Manual compact: warn user (cannot block, just inform)
     const output: HookOutput = {
-      result: 'block',
-      message: `[PreCompact] Update ledger before compacting: /continuity_ledger\nLedger: ${mostRecent}`
+      continue: true,
+      systemMessage: `[PreCompact] Consider updating ledger before compacting: /continuity_ledger\nLedger: ${mostRecent}`
     };
     console.log(JSON.stringify(output));
   }

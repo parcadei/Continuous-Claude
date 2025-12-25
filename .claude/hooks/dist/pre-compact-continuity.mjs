@@ -214,8 +214,8 @@ async function main() {
   const ledgerFiles = fs2.readdirSync(ledgerDir).filter((f) => f.startsWith("CONTINUITY_CLAUDE-") && f.endsWith(".md"));
   if (ledgerFiles.length === 0) {
     const output = {
-      result: "continue",
-      message: "[PreCompact] No ledger found. Create one? /continuity_ledger"
+      continue: true,
+      systemMessage: "[PreCompact] No ledger found. Create one? /continuity_ledger"
     };
     console.log(JSON.stringify(output));
     return;
@@ -250,14 +250,14 @@ async function main() {
     }
     const message = handoffFile ? `[PreCompact:auto] Created ${handoffFile} in thoughts/shared/handoffs/${sessionName}/` : `[PreCompact:auto] Session summary auto-appended to ${mostRecent}`;
     const output = {
-      result: "continue",
-      message
+      continue: true,
+      systemMessage: message
     };
     console.log(JSON.stringify(output));
   } else {
     const output = {
-      result: "block",
-      message: `[PreCompact] Update ledger before compacting: /continuity_ledger
+      continue: true,
+      systemMessage: `[PreCompact] Consider updating ledger before compacting: /continuity_ledger
 Ledger: ${mostRecent}`
     };
     console.log(JSON.stringify(output));

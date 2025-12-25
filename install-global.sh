@@ -50,7 +50,7 @@ echo "📦 A full backup will be created at ~/.claude-backup-<timestamp>"
 echo ""
 
 # Check for --yes flag to skip prompt
-if [[ "$1" != "--yes" && "$1" != "-y" ]]; then
+if [[ "${1:-}" != "--yes" && "${1:-}" != "-y" ]]; then
     read -p "Continue with installation? [y/N] " -n 1 -r
     echo ""
     if [[ ! $REPLY =~ ^[Yy]$ ]]; then

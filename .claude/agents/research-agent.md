@@ -2,7 +2,6 @@
 name: research-agent
 description: Comprehensive research using MCP tools (nia, perplexity, repoprompt, firecrawl)
 model: opus
-tools: [Bash, Read, Write, Glob, Grep]
 ---
 
 # Research Agent

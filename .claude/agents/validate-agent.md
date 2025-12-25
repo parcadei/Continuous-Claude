@@ -2,7 +2,6 @@
 name: validate-agent
 description: Validate plan tech choices against current best practices and past precedent
 model: haiku
-tools: [Bash, Read, Write, Glob, Grep, WebSearch]
 ---
 
 # Validate Agent

@@ -2,7 +2,6 @@
 name: plan-agent
 description: Create implementation plans using research, best practices, and codebase analysis
 model: opus
-tools: [Bash, Read, Write, Glob, Grep]
 ---
 
 # Plan Agent

@@ -2,7 +2,6 @@
 name: debug-agent
 description: Investigate issues using codebase exploration, logs, and code search
 model: opus
-tools: [Bash, Read, Write, Glob, Grep]
 ---
 
 # Debug Agent

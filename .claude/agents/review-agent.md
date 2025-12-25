@@ -2,7 +2,6 @@
 name: review-agent
 description: Review implementation by comparing plan (intent) vs Braintrust session (reality) vs git diff (changes)
 model: opus
-tools: [Bash, Read, Write, Glob, Grep]
 ---
 
 # Review Agent

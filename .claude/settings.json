@@ -1,7 +1,7 @@
 {
   "statusLine": {
     "type": "command",
-    "command": "$CLAUDE_PROJECT_DIR/.claude/scripts/status.sh"
+    "command": "$HOME/.claude/scripts/status.sh"
   },
   "hooks": {
     "PreCompact": [

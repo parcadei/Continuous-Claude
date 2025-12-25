@@ -671,7 +671,7 @@
             "type": "validation",
             "enforcement": "suggest",
             "priority": "critical",
-            "description": "PRE-implementation: Validate plan tech choices against current best practices",
+            "description": "PRE-implementation: Validate plan tech choices against current best practices and past precedent",
             "promptTriggers": {
                 "keywords": [
                     "validate plan",
@@ -682,14 +682,23 @@
                     "validate choices",
                     "before implementing",
                     "ready to implement",
-                    "plan looks good"
+                    "plan looks good",
+                    "check precedent",
+                    "past handoffs",
+                    "done this before",
+                    "similar tasks",
+                    "rag judge",
+                    "judge plan"
                 ],
                 "intentPatterns": [
                     "(validate|check|review).*?plan",
                     "(validate|check).*?(tech|choices|approach)",
                     "(before|ready).*?implement",
                     "(is|does).*?plan.*?(good|ready|valid)",
-                    "plan.*?(ready|validated|approved)"
+                    "plan.*?(ready|validated|approved)",
+                    "(check|search).*?precedent",
+                    "(similar|past).*?(task|handoff|implementation)",
+                    "(done|tried).*?before"
                 ]
             }
         },

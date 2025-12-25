@@ -87,21 +87,34 @@ LINE_NUM=0
 CONVERSATION_HISTORY="[]"
 
 # Add message to conversation history
+# Uses temp files to avoid "argument list too long" errors with large content
 add_to_history() {
     local role="$1"
     local content="$2"
     local tool_call_id="$3"
     local tool_calls="$4"
 
+    # Use temp files to avoid shell argument limits for large content
+    local tmp_content=$(mktemp)
+    local tmp_history=$(mktemp)
+    trap "rm -f '$tmp_content' '$tmp_history'" RETURN
+
+    # Truncate very large content to avoid memory issues (keep first 50KB)
+    echo "${content:0:51200}" > "$tmp_content"
+    echo "$CONVERSATION_HISTORY" > "$tmp_history"
+
     if [ "$role" = "tool" ]; then
-        CONVERSATION_HISTORY=$(echo "$CONVERSATION_HISTORY" | jq --arg role "$role" --arg content "$content" --arg id "$tool_call_id" \
-            '. += [{role: $role, tool_call_id: $id, content: $content}]')
+        CONVERSATION_HISTORY=$(jq --arg role "$role" --arg id "$tool_call_id" \
+            --rawfile content "$tmp_content" \
+            '. += [{role: $role, tool_call_id: $id, content: $content}]' "$tmp_history")
     elif [ -n "$tool_calls" ] && [ "$tool_calls" != "[]" ]; then
-        CONVERSATION_HISTORY=$(echo "$CONVERSATION_HISTORY" | jq --arg role "$role" --arg content "$content" --argjson tc "$tool_calls" \
-            '. += [{role: $role, content: $content, tool_calls: $tc}]')
+        CONVERSATION_HISTORY=$(jq --arg role "$role" --argjson tc "$tool_calls" \
+            --rawfile content "$tmp_content" \
+            '. += [{role: $role, content: $content, tool_calls: $tc}]' "$tmp_history")
     else
-        CONVERSATION_HISTORY=$(echo "$CONVERSATION_HISTORY" | jq --arg role "$role" --arg content "$content" \
-            '. += [{role: $role, content: $content}]')
+        CONVERSATION_HISTORY=$(jq --arg role "$role" \
+            --rawfile content "$tmp_content" \
+            '. += [{role: $role, content: $content}]' "$tmp_history")
     fi
 }
 

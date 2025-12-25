@@ -62,6 +62,35 @@ git diff <commit-hash>..HEAD
 git diff --stat HEAD
 ```
 
+### 1.4 Run Automated Verification
+
+```bash
+# Run comprehensive checks from project root
+cd $(git rev-parse --show-toplevel)
+
+# Standard verification commands (adjust per project)
+make check test 2>&1 || echo "make check/test failed"
+uv run pytest 2>&1 || echo "pytest failed"
+uv run mypy src/ 2>&1 || echo "type check failed"
+```
+
+### 1.5 Run Code Quality Checks (qlty)
+
+```bash
+# Lint changed files
+uv run python -m runtime.harness scripts/qlty_check.py
+
+# Get complexity metrics
+uv run python -m runtime.harness scripts/qlty_check.py --metrics
+
+# Find code smells
+uv run python -m runtime.harness scripts/qlty_check.py --smells
+```
+
+Note: If qlty is not initialized, skip with note in report.
+
+Document pass/fail for each command.
+
 ## Step 2: Extract Requirements from Plan
 
 Parse the plan and list every requirement:
@@ -99,6 +128,35 @@ For each requirement from the PLAN:
 Focus on GAPS ONLY - do not list correctly implemented items.
 ```
 
+### 3.1 Parallel Verification (For Large Reviews)
+
+For complex implementations, spawn parallel sub-tasks:
+
+```
+Task 1 - Verify database changes:
+Check migration files, schema changes match plan.
+Return: What was implemented vs what plan specified
+
+Task 2 - Verify API changes:
+Find all modified endpoints, compare to plan.
+Return: Endpoint-by-endpoint comparison
+
+Task 3 - Verify test coverage:
+Check if tests were added/modified as specified.
+Return: Test status and any missing coverage
+```
+
+### 3.2 Edge Case Thinking
+
+For each requirement, ask:
+- Were error conditions handled?
+- Are there missing validations?
+- Could this break existing functionality?
+- Will this be maintainable long-term?
+- Are there race conditions or security issues?
+
+Note any concerns in the Gaps section.
+
 ## Step 4: Generate Review Report
 
 **ALWAYS write output to:**
@@ -115,6 +173,16 @@ Plan: [path to plan file]
 Session: [session ID]
 
 ## Verdict: PASS | FAIL | NEEDS_REVIEW
+
+## Automated Verification Results
+✓ Build passes: `make build`
+✓ Tests pass: `uv run pytest`
+✗ Type check: `uv run mypy` (3 errors)
+
+## Code Quality (qlty)
+✓ Linting: 0 issues
+⚠️ Complexity: 2 functions exceed threshold
+✓ Code smells: None detected
 
 ## Requirements Status
 
@@ -139,6 +207,16 @@ Session: [session ID]
 - Tools used: [list from Braintrust]
 - Any loops detected: [yes/no]
 - Scope creep: [items implemented that weren't in plan]
+
+## Manual Testing Required
+
+1. UI functionality:
+   - [ ] Verify [feature] appears correctly
+   - [ ] Test error states with invalid input
+
+2. Integration:
+   - [ ] Confirm works with existing [component]
+   - [ ] Check performance with realistic data
 
 ## Recommendation
 

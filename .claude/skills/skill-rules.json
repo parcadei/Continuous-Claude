@@ -78,29 +78,6 @@
                 ]
             }
         },
-        "validate_plan": {
-            "type": "domain",
-            "enforcement": "suggest",
-            "priority": "high",
-            "description": "POST-implementation: Verify code matches plan, check success criteria",
-            "promptTriggers": {
-                "keywords": [
-                    "verify implementation",
-                    "check implementation",
-                    "validation report",
-                    "did it work",
-                    "verify code",
-                    "check code matches",
-                    "post implementation"
-                ],
-                "intentPatterns": [
-                    "(verify|check).*?implementation",
-                    "(is|was).*?implementation.*?(correct|complete|done)",
-                    "check.*?(success|criteria)",
-                    "(did|does).*?(work|pass)"
-                ]
-            }
-        },
         "commit": {
             "type": "domain",
             "enforcement": "suggest",
